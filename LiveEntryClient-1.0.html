@@ -107,6 +107,9 @@
                         variable.setValue(value);
                     }
                     break;
+                case "DETECT":
+                    Entry.variableContainer.getListByName('.LEDetect').setArray(getData().basic);
+                    break;
                 default:
                     variable.setValue(value);
                     break;
@@ -167,7 +170,6 @@
     }
     function update(){
         console.log("Pinging...");
-        Entry.variableContainer.getListByName('.LEDetect').setArray(getData().basic);
         for (var i = 0; i < objectname.length; i++) {
             if (objectname[i].data.split(" ")[1] == "-v") {
                 $.get(`https://${SERVERLINK}/`,function(data){
