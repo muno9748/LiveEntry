@@ -9,7 +9,6 @@
     }
     let server, port;
     let objectname = [];
-    Entry.variableContainer.getListByName('.LEDetect').setArray(getData().basic);
     for(var i = 0; i < Entry.variableContainer.getListByName('.LESet').array_.length; i++){
         objectname.push(Entry.variableContainer.getListByName('.LESet').array_[i]);
     }
@@ -168,15 +167,13 @@
     }
     function update(){
         console.log("Pinging...");
-        console.log($.ajax({url:`https://${SERVERLINK}/`,async:false}).responseText);
+        Entry.variableContainer.getListByName('.LEDetect').setArray(getData().basic);
         for (var i = 0; i < objectname.length; i++) {
             if (objectname[i].data.split(" ")[1] == "-v") {
-                console.log(objectname,i,objectname[i]);
                 $.get(`https://${SERVERLINK}/`,function(data){
                     Entry.variableContainer.getVariableByName(objectname[i-1].data.replace(/ -v/g, '')).setValue(data.result[server][port][objectname[i-1].data.replace(/ -v/g, '')].data_);
                 });
             } else {
-                console.log(objectname,i,objectname[i]);
                 $.get(`https://${SERVERLINK}/`,function(data){
                     Entry.variableContainer.getListByName(objectname[i-1].data).setArray(data.result[server][port][objectname[i-1].data].data_);
                 });
