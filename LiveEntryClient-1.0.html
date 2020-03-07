@@ -1,0 +1,186 @@
+<script>
+    const SERVERLINK = "%0";
+    alert("LiveEntry 클라이언트 - 실행시작\nMade by muno9748");
+    function getData(){
+        return JSON.parse($.ajax({url:`https://${SERVERLINK}/`,async:false}).responseText);
+    }
+    function get(url) {
+        return JSON.parse($.ajax({url:url,async:false}).responseText);
+    }
+    let server, port;
+    let objectname = [];
+    Entry.variableContainer.getListByName('.LEDetect').setArray(getData().basic);
+    for(var i = 0; i < Entry.variableContainer.getListByName('.LESet').array_.length; i++){
+        objectname.push(Entry.variableContainer.getListByName('.LESet').array_[i]);
+    }
+    Entry.block.add_value_to_list.func = function(sprite,script){
+        var listId = script.getField('LIST', script);
+        var value = script.getValue('VALUE', script);
+        var list = Entry.variableContainer.getList(listId, sprite);
+        list.appendValue(value);
+        //if (objectname.indexOf(list.name_) > -1) {
+            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=APPEND&arg0=${value}`);
+        //}
+	    return script.callReturn();
+    }
+    Entry.block.remove_value_from_list.func = function(sprite,script){
+        var listId = script.getField('LIST', script);
+        var value = script.getValue('VALUE', script);
+        var list = Entry.variableContainer.getList(listId, sprite);
+        var array = list.getArray();
+
+        if (!array || !Entry.Utils.isNumber(value) || value > array.length) {
+            throw new Error('can not remove value from array');
+        }
+
+        list.deleteValue(+value);
+        //if (objectname.indexOf(list.name_) < -1) {
+            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=DELETE&arg0=${(+value) - 1}`);
+        //}
+        return script.callReturn();
+    }
+    Entry.block.insert_value_to_list.func = function(sprite,script) {
+        var listId = script.getField('LIST', script);
+        var list = Entry.variableContainer.getList(listId, sprite);
+        var array = list.getArray();
+		var index = script.getNumberValue('INDEX',script);
+		var data = script.getValue('DATA',script);
+
+        if (!array || !Entry.Utils.isNumber(index) || index == 0 || index > array.length + 1) {
+            throw new Error('can not insert value to array');
+        }
+
+        //if (objectname.indexOf(list.name_) < -1) {
+            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=INSERT&arg0=${(+value) - 1}&arg1=${data}`);
+        //}
+        list.insertValue(index, data);
+        return script.callReturn();
+    }
+    Entry.block.change_value_list_index.func = function(sprite,script) {
+        var listId = script.getField('LIST', script);
+        var list = Entry.variableContainer.getList(listId, sprite);
+        var array = list.getArray();
+		var index = script.getNumberValue('INDEX', script);
+		var data = script.getValue('DATA', script);
+
+        if (!array || !Entry.Utils.isNumber(index) || index > array.length) {
+            throw new Error('can not insert value to array');
+        }
+
+        //if (objectname.indexOf(list.name_) < -1) {
+            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=MODIFY&arg0=${(+value) - 1}&arg1=${data}`);
+        //}
+        list.replaceValue(index, data);
+        return script.callReturn();
+    }
+    Entry.block.set_variable.func = function(sprite,script){
+        var variableId = script.getField('VARIABLE', script);
+        var value = script.getValue('VALUE', script);
+        var variable = Entry.variableContainer.getVariable(variableId, sprite);
+        if (value.split(" ")[0] == "/LiveEntry" && variable.name_ == ".LECMD") {
+            var args = value.split(" ");
+            args.splice(0,1);
+            switch (args[0]) {
+                case "SET":
+                    if (args[1] == "CHANNEL") {
+                        server = args[2];
+                        variable.setValue('');
+                    } else if (args[1] == "PORT") {
+                        port = args[2];
+                        variable.setValue('');
+                    } else {
+                        variable.setValue(value);
+                    }
+                    break;
+                case "START":
+                    if (server && port) {
+                        start();   
+                    } else {
+                        variable.setValue(value);
+                    }
+                    break;
+                case "EXIT":
+                    if (args[1] == "PORT") {
+                        $.get(`https://${SERVERLINK}/port/close/${server}/${args[2]}`);
+                    } else if (args[1] == "CHANNEL"){
+                        $.get(`https://${SERVERLINK}/unreg/${args[2]}`);
+                    } else {
+                        variable.setValue(value);
+                    }
+                    break;
+                default:
+                    variable.setValue(value);
+                    break;
+            }
+        } else {
+            variable.setValue(value);
+            //if (objectname.indexOf(variable.name_ + " -v") > -1) {
+                $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${variable.name_}&objecttype=var&opcode=SET&arg0=${value}`);
+            //}
+        }
+        return script.callReturn();
+    }
+    Entry.block.change_variable.func = function(sprite,script) {
+        var variableId = script.getField('VARIABLE', script);
+        var value = script.getValue('VALUE', script);
+        var fixed = 0;
+
+        if (value == false && typeof value === 'boolean') {
+            throw new Error('Type is not correct');
+        }
+
+        var variable = Entry.variableContainer.getVariable(variableId, sprite);
+        var variableValue = variable.getValue();
+        var sumValue;
+
+        if (Entry.Utils.isNumber(value) && variable.isNumber()) {
+            value = Entry.parseNumber(value);
+            variableValue = Entry.parseNumber(variableValue);
+            fixed = Entry.getMaxFloatPoint([value, variable.getValue()]);
+            sumValue = new BigNumber(value).plus(variableValue).toNumber().toFixed(fixed);
+        } else {
+            sumValue = "".concat(variableValue).concat(value);
+        }
+
+        variable.setValue(sumValue);
+        $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${variable.name_}&objecttype=var&opcode=SET&arg0=${value}`);
+        return script.callReturn();
+    }
+    function start(){
+        console.log(objectname);
+        if (get(`https://${SERVERLINK}/checkServer/${server}`).status == "Closed") {
+            get(`https://${SERVERLINK}/reg/${server}`);
+        }
+        if (get(`https://${SERVERLINK}/checkPort/${server}/${port}`).status == "Closed") {
+            get(`https://${SERVERLINK}/port/open/${server}/${port}`);
+        }
+        for(var i = 0; i < objectname.length; i++){
+            if (objectname[i].data.split(" ")[1] == "-v") {
+                get(`https://${SERVERLINK}/value/reg/${server}/${port}/?objectname=${objectname[i].data.replace(/ -v/g, '')}&objecttype=var`);
+            } else {
+                console.log(objectname,i);
+                get(`https://${SERVERLINK}/value/reg/${server}/${port}/?objectname=${objectname[i].data}&objecttype=list`);
+            }
+        }
+        let interval = setInterval(function(){
+            update();
+        }, 230);
+    }
+    function update(){
+        console.log("Pinging...");
+        console.log($.ajax({url:`https://${SERVERLINK}/`,async:false}).responseText);
+        for (var i = 0; i < objectname.length; i++) {
+            if (objectname[i].data.split(" ")[1] == "-v") {
+                console.log(objectname,i,objectname[i]);
+                $.get(`https://${SERVERLINK}/`,function(data){
+                    Entry.variableContainer.getVariableByName(objectname[i-1].data.replace(/ -v/g, '')).setValue(data.result[server][port][objectname[i-1].data.replace(/ -v/g, '')].data_);
+                });
+            } else {
+                console.log(objectname,i,objectname[i]);
+                $.get(`https://${SERVERLINK}/`,function(data){
+                    Entry.variableContainer.getListByName(objectname[i-1].data).setArray(data.result[server][port][objectname[i-1].data].data_);
+                });
+            }
+        }
+    }
+</script>
