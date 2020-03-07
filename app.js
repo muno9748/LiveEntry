@@ -328,7 +328,7 @@ app.get('/checkPort/*/*', (req,res) => {
 });
 
 app.get('/install', (req,res) => {
-    res.send(installScript("1.0",req.host,'http'));
+    res.send(installScript("1.0",req.host,'https'));
 });
 
 app.listen(PORT, () => {console.log(`LiveEntry Started at ${PORT}`);});
