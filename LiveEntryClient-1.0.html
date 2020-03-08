@@ -67,7 +67,7 @@
         }
 
         //if (objectname.indexOf(list.name_) < -1) {
-            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=MODIFY&arg0=${(+value) - 1}&arg1=${data}`);
+            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=MODIFY&arg0=${(+data) - 1}&arg1=${data}`);
         //}
         list.replaceValue(index, data);
         return script.callReturn();
