@@ -76,8 +76,8 @@
         var variableId = script.getField('VARIABLE', script);
         var value = script.getValue('VALUE', script);
         var variable = Entry.variableContainer.getVariable(variableId, sprite);
-        if (value.split(" ")[0] == "/LiveEntry" && variable.name_ == ".LECMD") {
-            var args = value.split(" ");
+        if (value.toString().split(" ")[0] == "/LiveEntry" && variable.name_ == ".LECMD") {
+            var args = value.toString().split(" ");
             args.splice(0,1);
             switch (args[0]) {
                 case "SET":
