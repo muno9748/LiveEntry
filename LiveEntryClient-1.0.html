@@ -7,19 +7,20 @@
     function get(url) {
         return JSON.parse($.ajax({url:url,async:false}).responseText);
     }
-    let server, port;
+    let server, port, interval;
     let objectname = [];
     for(var i = 0; i < Entry.variableContainer.getListByName('.LESet').array_.length; i++){
-        objectname.push(Entry.variableContainer.getListByName('.LESet').array_[i]);
+        objectname.push(Entry.variableContainer.getListByName('.LESet').array_[i].data);
     }
+
     Entry.block.add_value_to_list.func = function(sprite,script){
         var listId = script.getField('LIST', script);
         var value = script.getValue('VALUE', script);
         var list = Entry.variableContainer.getList(listId, sprite);
         list.appendValue(value);
-        //if (objectname.indexOf(list.name_) > -1) {
-            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=APPEND&arg0=${value}`);
-        //}
+        if (objectname.indexOf(list.name_) > -1) {
+            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=APPEND&arg0=${encodeURIComponent(value)}`);
+        }
 	    return script.callReturn();
     }
     Entry.block.remove_value_from_list.func = function(sprite,script){
@@ -33,9 +34,9 @@
         }
 
         list.deleteValue(+value);
-        //if (objectname.indexOf(list.name_) < -1) {
+        if (objectname.indexOf(list.name_) < -1) {
             $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=DELETE&arg0=${(+value) - 1}`);
-        //}
+        }
         return script.callReturn();
     }
     Entry.block.insert_value_to_list.func = function(sprite,script) {
@@ -49,9 +50,9 @@
             throw new Error('can not insert value to array');
         }
 
-        //if (objectname.indexOf(list.name_) < -1) {
-            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=INSERT&arg0=${(+index) - 1}&arg1=${data}`);
-        //}
+        if (objectname.indexOf(list.name_) < -1) {
+            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=INSERT&arg0=${(+index) - 1}&arg1=${encodeURIComponent(data)}`);
+        }
         list.insertValue(index, data);
         return script.callReturn();
     }
@@ -66,9 +67,9 @@
             throw new Error('can not insert value to array');
         }
 
-        //if (objectname.indexOf(list.name_) < -1) {
-            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=MODIFY&arg0=${(+index) - 1}&arg1=${data}`);
-        //}
+        if (objectname.indexOf(list.name_) < -1) {
+            $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${list.name_}&objecttype=list&opcode=MODIFY&arg0=${(+index) - 1}&arg1=${encodeURIComponent(data)}`);
+        }
         list.replaceValue(index, data);
         return script.callReturn();
     }
@@ -116,9 +117,9 @@
             }
         } else {
             variable.setValue(value);
-            //if (objectname.indexOf(variable.name_ + " -v") > -1) {
-                $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${variable.name_}&objecttype=var&opcode=SET&arg0=${value}`);
-            //}
+            if (objectname.indexOf(variable.name_ + " -v") > -1) {
+                $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${variable.name_}&objecttype=var&opcode=SET&arg0=${encodeURIComponent(value)}`);
+            }
         }
         return script.callReturn();
     }
@@ -145,11 +146,10 @@
         }
 
         variable.setValue(sumValue);
-        $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${variable.name_}&objecttype=var&opcode=SET&arg0=${value}`);
+        $.get(`https://${SERVERLINK}/value/calc/${server}/${port}/?objectname=${variable.name_}&objecttype=var&opcode=SET&arg0=${encodeURIComponent(value)}`);
         return script.callReturn();
     }
     function start(){
-        console.log(objectname);
         if (get(`https://${SERVERLINK}/checkServer/${server}`).status == "Closed") {
             get(`https://${SERVERLINK}/reg/${server}`);
         }
@@ -157,29 +157,39 @@
             get(`https://${SERVERLINK}/port/open/${server}/${port}`);
         }
         for(var i = 0; i < objectname.length; i++){
-            if (objectname[i].data.split(" ")[1] == "-v") {
-                get(`https://${SERVERLINK}/value/reg/${server}/${port}/?objectname=${objectname[i].data.replace(/ -v/g, '')}&objecttype=var`);
+            if (objectname[i].split(" ")[1] == "-v") {
+                get(`https://${SERVERLINK}/value/reg/${server}/${port}/?objectname=${objectname[i].replace(/ -v/g, '')}&objecttype=var`);
             } else {
-                console.log(objectname,i);
-                get(`https://${SERVERLINK}/value/reg/${server}/${port}/?objectname=${objectname[i].data}&objecttype=list`);
+                get(`https://${SERVERLINK}/value/reg/${server}/${port}/?objectname=${objectname[i]}&objecttype=list`);
             }
         }
-        let interval = setInterval(function(){
+        interval = setInterval(function(){
             update();
         }, 500);
     }
     function update(){
-        console.log("Pinging...");
-        for (var i = 0; i < objectname.length; i++) {
-            if (objectname[i].data.split(" ")[1] == "-v") {
-                $.get(`https://${SERVERLINK}/`,function(data){
-                    Entry.variableContainer.getVariableByName(objectname[i-1].data.replace(/ -v/g, '')).setValue(data.result[server][port][objectname[i-1].data.replace(/ -v/g, '')].data_);
-                });
-            } else {
-                $.get(`https://${SERVERLINK}/`,function(data){
-                    Entry.variableContainer.getListByName(objectname[i-1].data).setArray(data.result[server][port][objectname[i-1].data].data_);
-                });
+        console.log("Loading Data...");
+        if (Entry.engine.state == "run") {
+            for (var i = 0; i < objectname.length; i++) {
+                if (objectname[i].split(" ")[1] == "-v") {
+                    $.get(`https://${SERVERLINK}/`,function(data){
+                        Entry.variableContainer.getVariableByName(objectname[i-1].replace(/ -v/g, '')).setValue(data.result[server][port][objectname[i-1].replace(/ -v/g, '')].data_);
+                    });
+                } else {
+                    $.get(`https://${SERVERLINK}/`,function(data){
+                        Entry.variableContainer.getListByName(objectname[i-1]).setArray(data.result[server][port][objectname[i-1]].data_);
+                    });
+                }
             }
+        } else {
+            for(var i = 0; i < objectname.length; i++){
+                if (typeof Entry.variableContainer.getListByName(objectname[i]) != "undefined") {
+                    Entry.variableContainer.getListByName(objectname[i]).setArray([]);
+                } else {
+                    Entry.variableContainer.getVariableByName(objectname[i].replace(/ -v/g, '')).setValue();
+                }
+            }
+            clearInterval(interval);
         }
     }
 </script>
