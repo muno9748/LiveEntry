@@ -1,3 +1,8 @@
+# This repository fucked up 
+##### 이거 망함
+
+<hr>
+
 <p align="center">
     <img src="https://github.com/muno9748/LiveEntry/blob/master/LOGO.png" alt="LE_LOGO">
 </p>
